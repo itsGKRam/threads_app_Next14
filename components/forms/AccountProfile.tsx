@@ -1,5 +1,12 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
+import { ChangeEvent, useState } from "react";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -11,18 +18,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { updateUser } from "@/lib/actions/user.actions";
+
 import { useUploadThing } from "@/lib/uploadthing";
 import { isBase64Image } from "@/lib/utils";
-import { UserValidation } from "@/lib/validations/user";
-import { zodResolver } from "@hookform/resolvers/zod";
-import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
-import { ChangeEvent, useState } from "react";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
 
-interface AccountProfileProps {
+import { updateUser } from "@/lib/actions/user.actions";
+import { UserValidation } from "@/lib/validations/user";
+
+interface Props {
   user: {
     id: string;
     objectId: string;
@@ -34,16 +37,14 @@ interface AccountProfileProps {
   btnTitle: string;
 }
 
-export default function AccountProfile({
-  user,
-  btnTitle,
-}: AccountProfileProps) {
+const AccountProfile = ({ user, btnTitle }: Props) => {
   const router = useRouter();
   const pathname = usePathname();
-  const [files, setFiles] = useState<File[]>([]);
   const { startUpload } = useUploadThing("media");
 
-  const form = useForm({
+  const [files, setFiles] = useState<File[]>([]);
+
+  const form = useForm<z.infer<typeof UserValidation>>({
     resolver: zodResolver(UserValidation),
     defaultValues: {
       profile_photo: user?.image ? user.image : "",
@@ -59,10 +60,12 @@ export default function AccountProfile({
     const hasImageChanged = isBase64Image(blob);
     if (hasImageChanged) {
       const imgRes = await startUpload(files);
-      if (imgRes && imgRes[0].url) {
-        values.profile_photo = imgRes[0].url;
+
+      if (imgRes && imgRes[0].fileUrl) {
+        values.profile_photo = imgRes[0].fileUrl;
       }
     }
+
     await updateUser({
       name: values.name,
       path: pathname,
@@ -84,6 +87,7 @@ export default function AccountProfile({
     fieldChange: (value: string) => void
   ) => {
     e.preventDefault();
+
     const fileReader = new FileReader();
 
     if (e.target.files && e.target.files.length > 0) {
@@ -210,4 +214,6 @@ export default function AccountProfile({
       </form>
     </Form>
   );
-}
+};
+
+export default AccountProfile;
